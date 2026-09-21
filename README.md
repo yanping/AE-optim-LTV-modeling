@@ -2,7 +2,7 @@
 
 本项目基于 Kaggle 竞赛 [Mobile Game LTV Forecasting Challenge](https://www.kaggle.com/competitions/mobile-game-ltv-forecasting-challenge) 的全量用户数据，使用 Google Cloud **AlphaEvolve**（基于 Gemini 大模型驱动的演化编码引擎）对移动游戏 180 天 LTV 预测的**特征工程**进行自动化搜索与演化优化。
 
-模型底层采用冻结的 **LightGBM (Tweedie分布, $p=1.5$)** 工业级基线。系统仅在特征工程代码块（标注 `# EVOLVE-BLOCK`）内进行搜索演化，在保持模型结构与超参数不变的前提下，持续挖掘业务变现动量、用户留存效率与长尾大额付费（Whale）的特征交互。
+模型底层采用冻结的 **LightGBM (Tweedie分布, $`p=1.5`$)** 工业级基线。系统仅在特征工程代码块（标注 `# EVOLVE-BLOCK`）内进行搜索演化，在保持模型结构与超参数不变的前提下，持续挖掘业务变现动量、用户留存效率与长尾大额付费（Whale）的特征交互。
 
 > 📘 **架构设计与理论探索**：
 > - 完整系统设计方案与模块图谱详见 [DESIGN.md](DESIGN.md)。
@@ -166,8 +166,9 @@ dataset:
 | **`make run task_id=custom`** | 指定自定义任务编号保存产物。 |
 | **`make report`** | **自动在默认浏览器中打开**最新一次任务的 HTML 全景报告（支持传参 `make report task_id=...` 打开指定历史报告）。 |
 | **`make test`** | 运行 `tests/` 目录下的自动化单元与集成测试。 |
-| **`make mask`** | **项目交付脱敏**：一键将全项目配置与文档中的个人 `project_id`、`ge_app_id` 脱敏遮盖为占位符。 |
+| **`make mask`** | **项目交付脱敏**：一键将全项目配置与文档中的个人 `project_id`、`ge_app_id` 脱敏遮盖为占位符，并安全备份至本地 `.credentials.backup`。 |
 | **`make mask-dry`** | **脱敏预览**：预览脱敏匹配的文件与出现频次（Dry-run），不实际修改文件。 |
+| **`make unmask`** | **凭据恢复**：一键从本地 `.credentials.backup` 自动恢复凭据，或指定自定义凭据恢复。 |
 | **`make clean`** | 清理 Python 编译缓存文件与临时数据。 |
 
 ---
@@ -213,37 +214,46 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
   - **架构精简与战略启示**：深度分析代码剪枝与基线保留情况，提炼 3 大工业级算法迭代与业务落地战略启示。
   - **本地秒级缓存与离线兜底**：归因结果自动持久化至 `code_attribution.json`，后续查看 0.05 秒秒级直出；支持无网/无凭据环境优雅降级。
 
-### 5.4 工业级评测指标体系与商业化机理解析
+## 6. 工业级评测指标体系与商业化机理解析
 
 在移动游戏 180 天 LTV 预测场景中，四大评估指标互为补充，系统在报表与选优中均明确标定其优化方向与业务价值：
 
 | 指标名称 | 优劣倾向 | 算法/统计定义 | 手游商业化与业务决策意义 |
 | :--- | :---: | :--- | :--- |
-| **Normalized Gini**<br>(归一化基尼系数) | **`↑ 越大越好`**<br>(值域 $[0, 1]$) | 衡量预测值累积分布相对于完美排序曲线的洛伦兹覆盖面积（即 $\text{Gini}(y, \hat{y}) / \text{Gini}(y, y)$）。 | **宏观用户分层与 UA 买量出价的核心排序力指标**。对单个极端大额偶发充值具有极佳的秩鲁棒性，不会因单个离群点而扭曲全量大盘评估。 |
+| **Normalized Gini**<br>(归一化基尼系数) | **`↑ 越大越好`**<br>(值域 $`[0, 1]`$) | 衡量预测值累积分布相对于完美排序曲线的洛伦兹覆盖面积（即 $`\mathrm{Gini}(y, \hat{y}) / \mathrm{Gini}(y, y)`$）。 | **宏观用户分层与 UA 买量出价的核心排序力指标**。对单个极端大额偶发充值具有极佳的秩鲁棒性，不会因单个离群点而扭曲全量大盘评估。 |
 | **Top-10% Revenue Recall**<br>(头部核心大R营收召回率) | **`↑ 越大越好`**<br>(百分比) | 预测 LTV 最高的头部 10% 用户，其实际充值金额占留出集全量实际总收入的百分比。 | **游戏变现极度依赖的“巨鲸”捕获率**。F2P 手游前 10% 核心付费者通常贡献 70%~85% 收入，直接决定精细化 VIP 运营与大额高意愿充值人群圈选的精准度。 |
-| **RMSE**<br>(均方根误差) | **`↓ 越小越好`**<br>(美元绝对金额) | 实际真实累积收入与预测收入之间差值的平方和均值的平方根：$\sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}$。 | **总财务流水预测误差测度**。由于 LTV 呈现严重的帕累托长尾，巨鲸误差平方占比较大。*注：在云端优化器中以 `neg_rmse`（负数，越大越好）形式打分，报告中自动还原为正向真实金额（越小越好）。* |
-| **Spearman Rank Correlation**<br>(斯皮尔曼等级相关系数) | **`↑ 越大越好`**<br>(值域 $[-1, 1]$) | 预测值排名与真实值排名之间的皮尔逊相关系数：$\rho = 1 - \frac{6 \sum d_i^2}{n(n^2 - 1)}$。 | **纯粹单调排序能力**。完全不受非线性单调变换及极端异常值量纲影响，真实反映算法对玩家价值高低相对位次的辨别一致性。 |
+| **RMSE**<br>(均方根误差) | **`↓ 越小越好`**<br>(美元绝对金额) | 实际真实累积收入与预测收入之间差值的平方和均值的平方根：$`\sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}`$。 | **总财务流水预测误差测度**。由于 LTV 呈现严重的帕累托长尾，巨鲸误差平方占比较大。*注：在云端优化器中以 `neg_rmse`（负数，越大越好）形式打分，报告中自动还原为正向真实金额（越小越好）。* |
+| **Spearman Rank Correlation**<br>(斯皮尔曼等级相关系数) | **`↑ 越大越好`**<br>(值域 $`[-1, 1]`$) | 预测值排名与真实值排名之间的皮尔逊相关系数：$`\rho = 1 - \frac{6 \sum d_i^2}{n(n^2 - 1)}`$。 | **纯粹单调排序能力**。完全不受非线性单调变换及极端异常值量纲影响，真实反映算法对玩家价值高低相对位次的辨别一致性。 |
 
 ---
 
-## 6. 项目交付脱敏与隐私安全防护 (Delivery Sanitization)
+## 7. 项目交付脱敏与隐私保护 (`make mask` & `make unmask`)
 
-为了防止在将项目打包发送给客户时泄漏个人 Google Cloud 凭据（`project_id`、`ge_app_id`、GCP 项目编号等），本项目内置了专业的自动化脱敏工具：
+为保障企业级隐私安全，在将代码开源、分享给客户或推送到公共 GitHub 仓库前，请务必执行凭据脱敏工具。
 
-### 6.1 一键脱敏工作流
-在向客户发送项目代码前，推荐按以下两步快速操作：
+### 7.1 脱敏命令
+```bash
+# 1. 预览模式 (查看哪些文件会被修改，不写盘)
+make mask-dry
 
-1. **执行脱敏脚本**（自动将 `config.yaml`、说明文档、测试用例与历史产物中的敏感凭据替换为 `<YOUR_GCP_PROJECT_ID>` 和 `<YOUR_GE_APP_ID>`）：
-   ```bash
-   make mask
-   # 若仅预览将被替换的文件和频次，可运行：
-   make mask-dry
-   ```
-   > 💡 **安全设计**：脱敏脚本 [`scripts/mask_credentials.py`](scripts/mask_credentials.py) 本身**绝无任何硬编码敏感信息**，采用动态上下文探测，且仅依赖 Python 3 原生标准库，即使未激活或已删除虚拟环境亦可直接执行。并在 `config.yaml` 中为客户补充了友好的填入指引注释。
+# 2. 正式执行脱敏 (自动替换 project_id 与 ge_app_id 为占位符，并保存本地恢复凭据)
+make mask
+```
 
-2. **清理本地虚拟环境目录**：
-   ```bash
-   rm -rf venv/
-   ```
-   客户解压项目后，仅需依照本文档 2.2 节运行 `make setup`（或手动 `python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`）即可秒级创建其本地环境并安装依赖。
+脱敏工具会自动扫描代码库中的 `config.yaml`、文档和脚本，将您的真实凭证替换为 `<YOUR_GCP_PROJECT_ID>` 和 `<YOUR_GE_APP_ID>`，并在 `config.yaml` 中生成填写指导注释。同时会将您的原凭证安全暂存于本地 `.credentials.backup`（已被 `.gitignore` 保护，绝不会被推送到 Git）。
+
+### 7.2 恢复凭证命令
+```bash
+# 1. 本地一键恢复 (自动读取 .credentials.backup 恢复为您本人的凭据):
+make unmask
+
+# 2. 或指定自定义凭证恢复:
+make unmask PROJECT_ID=my-gcp-project-123 APP_ID=gemini-enterprise-999999
+```
+
+### 7.3 清理本地虚拟环境
+```bash
+rm -rf venv/
+```
+客户解压项目后，仅需依照本文档第 2 节运行 `make setup`（或手动 `python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`）即可秒级创建其本地环境并安装依赖。
 

@@ -57,6 +57,9 @@ mask:
 mask-dry:
 	@python3 scripts/mask_credentials.py --dry-run
 
+unmask:
+	@python3 scripts/mask_credentials.py --restore $(if $(PROJECT_ID),--project-id $(PROJECT_ID),) $(if $(APP_ID),--app-id $(APP_ID),)
+
 clean:
 	@echo "Cleaning temporary files..."
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

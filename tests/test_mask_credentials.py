@@ -10,6 +10,8 @@ from scripts.mask_credentials import (
     extract_current_credentials,
     mask_files,
     restore_files,
+    save_credentials_backup,
+    load_credentials_backup,
     PROJECT_ID_PLACEHOLDER,
     GE_APP_ID_PLACEHOLDER,
     PROJECT_NUM_PLACEHOLDER,
@@ -102,3 +104,22 @@ def test_restore_files(tmp_path):
     assert "client-app" in content
     assert PROJECT_ID_PLACEHOLDER not in content
     assert GE_APP_ID_PLACEHOLDER not in content
+
+
+def test_backup_and_load_credentials(tmp_path):
+    # Test saving backup
+    backup_file = save_credentials_backup(tmp_path, "backup-proj-123", "backup-app-456")
+    assert backup_file.exists()
+    assert backup_file.name == ".credentials.backup"
+
+    # Test loading from backup
+    pid, app = load_credentials_backup(tmp_path)
+    assert pid == "backup-proj-123"
+    assert app == "backup-app-456"
+
+    # Test loading from non-existent backup
+    empty_dir = tmp_path / "empty_dir"
+    empty_dir.mkdir()
+    none_pid, none_app = load_credentials_backup(empty_dir)
+    assert none_pid is None
+    assert none_app is None

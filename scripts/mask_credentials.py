@@ -35,6 +35,7 @@ from typing import Dict, List, Optional, Set, Tuple
 PROJECT_ID_PLACEHOLDER = "<YOUR_GCP_PROJECT_ID>"
 GE_APP_ID_PLACEHOLDER = "<YOUR_GE_APP_ID>"
 PROJECT_NUM_PLACEHOLDER = "<YOUR_GCP_PROJECT_NUMBER>"
+BACKUP_FILE_NAME = ".credentials.backup"
 
 # Directories and files to exclude from scanning
 EXCLUDE_DIRS = {
@@ -96,6 +97,38 @@ def extract_current_credentials(config_path: Path) -> Tuple[Optional[str], Optio
     if app and app.startswith("<") and app.endswith(">"):
         app = None
 
+    return pid, app
+
+
+def save_credentials_backup(root_dir: Path, project_id: str, ge_app_id: str) -> Path:
+    """Saves unmasked credentials into local .credentials.backup file."""
+    backup_path = root_dir / BACKUP_FILE_NAME
+    content = (
+        f"# AlphaEvolve local credentials backup\n"
+        f"# Generated automatically by scripts/mask_credentials.py\n"
+        f"# DO NOT COMMIT THIS FILE (protected by .gitignore)\n"
+        f"project_id: {project_id}\n"
+        f"ge_app_id: {ge_app_id}\n"
+    )
+    backup_path.write_text(content, encoding="utf-8")
+    return backup_path
+
+
+def load_credentials_backup(root_dir: Path) -> Tuple[Optional[str], Optional[str]]:
+    """Loads backup credentials from local .credentials.backup if present."""
+    backup_path = root_dir / BACKUP_FILE_NAME
+    if not backup_path.exists():
+        return None, None
+    try:
+        content = backup_path.read_text(encoding="utf-8")
+    except Exception:
+        return None, None
+
+    pid_match = re.search(r'^\s*project_id:\s*["\']?([^"\'#\s\n]+)["\']?', content, re.MULTILINE)
+    app_match = re.search(r'^\s*ge_app_id:\s*["\']?([^"\'#\s\n]+)["\']?', content, re.MULTILINE)
+
+    pid = pid_match.group(1).strip() if pid_match else None
+    app = app_match.group(1).strip() if app_match else None
     return pid, app
 
 
@@ -266,18 +299,30 @@ def main():
 
     if args.restore:
         # Restore mode
-        if not args.project_id or not args.app_id:
-            print("❌ Error: Both --project-id and --app-id are required when using --restore.")
-            print("Example: python3 scripts/mask_credentials.py --restore --project-id my-proj --app-id my-app")
+        target_pid = args.project_id
+        target_app = args.app_id
+
+        # If not provided via CLI, attempt loading from .credentials.backup
+        if not target_pid or not target_app:
+            backup_pid, backup_app = load_credentials_backup(root_dir)
+            target_pid = target_pid or backup_pid
+            target_app = target_app or backup_app
+
+        if not target_pid or not target_app:
+            print("❌ Error: Both project_id and ge_app_id are required when using --restore.")
+            print("   Please provide credentials via CLI arguments:")
+            print("     python3 scripts/mask_credentials.py --restore --project-id <PID> --app-id <APP_ID>")
+            print("     make unmask PROJECT_ID=<PID> APP_ID=<APP_ID>")
+            print(f"   Or ensure local {BACKUP_FILE_NAME} exists from a previous `make mask` execution.")
             sys.exit(1)
 
         print(f"Mode: RESTORE credentials into placeholders")
-        print(f"Target Project ID: {args.project_id}")
-        print(f"Target App ID:     {args.app_id}")
+        print(f"Target Project ID: {target_pid}")
+        print(f"Target App ID:     {target_app}")
         if args.dry_run:
             print("[DRY-RUN MODE] No files will be modified.")
 
-        mods = restore_files(root_dir, args.project_id, args.app_id, dry_run=args.dry_run)
+        mods = restore_files(root_dir, target_pid, target_app, dry_run=args.dry_run)
         print(f"\nModified {len(mods)} files:")
         for fpath, count in mods.items():
             rel = fpath.relative_to(root_dir)
@@ -316,6 +361,10 @@ def main():
 
     mods = mask_files(root_dir, project_id, ge_app_id, dry_run=args.dry_run)
 
+    if not args.dry_run and project_id and ge_app_id:
+        backup_file = save_credentials_backup(root_dir, project_id, ge_app_id)
+        print(f"\n💾 Saved credentials backup to local {backup_file.name} (protected by .gitignore)")
+
     print(f"\n{'[DRY-RUN] Would modify' if args.dry_run else 'Successfully modified'} {len(mods)} files:")
     for fpath, count in mods.items():
         rel = fpath.relative_to(root_dir)
@@ -324,10 +373,11 @@ def main():
     print("\n" + "=" * 72)
     print("📋 Project Delivery Safety Checklist:")
     print("  1. Credentials masked with `<YOUR_GCP_PROJECT_ID>` and `<YOUR_GE_APP_ID>`.")
-    print("  2. In config.yaml, comments now explicitly prompt recipient to fill in their own info.")
-    print("  3. Before packing or sending to client, remember to delete the virtual environment:")
+    print(f"  2. Credentials safely backed up to {BACKUP_FILE_NAME} (never committed to git).")
+    print("  3. In config.yaml, comments now explicitly prompt recipient to fill in their own info.")
+    print("  4. Before packing or sending to client, remember to delete the virtual environment:")
     print("     $ rm -rf venv/")
-    print("  4. Inform recipient to run `make setup` (or manual venv creation) and `make auth`.")
+    print("  5. Inform recipient to run `make setup` (or manual venv creation) and `make auth`.")
     print("=" * 72)
 
 

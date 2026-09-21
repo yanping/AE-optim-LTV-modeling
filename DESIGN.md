@@ -1,13 +1,13 @@
 # AlphaEvolve LTV 特征工程自动优化系统设计方案 (DESIGN.md)
 
-本文档根据 [TASK_SPEC.md](file:///Users/ianychen/Projects/mini-LTV-demo/TASK_SPEC.md) 的要求制定，旨在将本项目现有的 **LightGBM (Tweedie分布, $p=1.5$)** 移动游戏 LTV 预测基线改造为支持 Google Cloud **AlphaEvolve**（基于 Gemini 驱动的演化编码智能体）自动搜索与优化特征工程的系统。
+本文档根据 [TASK_SPEC.md](TASK_SPEC.md) 的要求制定，旨在将本项目现有的 **LightGBM (Tweedie分布, $`p=1.5`$)** 移动游戏 LTV 预测基线改造为支持 Google Cloud **AlphaEvolve**（基于 Gemini 驱动的演化编码智能体）自动搜索与优化特征工程的系统。
 
 ---
 
 ## 1. 系统目标与设计原则
 
 1. **原始模型与超参数严格冻结**：
-   - 保持现有的 LightGBM Tweedie 树模型超参数（树叶数 31、学习率 0.05、方差幂 $p=1.5$ 等）不变，只将演化能力集中在**特征工程（Feature Engineering）**的发现与构造上。
+   - 保持现有的 LightGBM Tweedie 树模型超参数（树叶数 31、学习率 0.05、方差幂 $`p=1.5`$ 等）不变，只将演化能力集中在**特征工程（Feature Engineering）**的发现与构造上。
    - 原始代码保留在 `src/` 中，采用外层 Wrapper 模块包裹与调用的形式，降低侵入性。
    - 在原始代码特征工程定义处注入 `# EVOLVE-BLOCK-START` 与 `# EVOLVE-BLOCK-END` 标记。
 2. **科学三向数据集切分（60% / 20% / 20%）**：
@@ -145,7 +145,7 @@ sequenceDiagram
   1. 依据 `ltv_d8_d180` 付费者 10 分位确定 11 个分层区间。
   2. 依据 `total_revenue_d7` 早期变现金额划定收入阶梯。
   3. 依据 `platform`（iOS / Android）划分渠道。
-  4. 构成复合 Stratum 标签，首次切分出 20% 的 `holdout_split.csv`；在剩余 80% 数据中，按 $60 / 80 = 75\%$ 与 $20 / 80 = 25\%$ 再次分层切分为 `train_split.csv` 与 `eval_split.csv`。
+  4. 构成复合 Stratum 标签，首次切分出 20% 的 `holdout_split.csv`；在剩余 80% 数据中，按 $`60 / 80 = 75\%`$ 与 $`20 / 80 = 25\%`$ 再次分层切分为 `train_split.csv` 与 `eval_split.csv`。
 - 保证训练集、评估集、留出集在正负样本比、平均 LTV、巨鲸占比完全同分布。
 
 ### 4.2 种子代码与演化标记 (`src/program.py` 与 `src/dataset.py`)
@@ -186,12 +186,12 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
   ```
 - **数据流与模型拟合**：
   1. 使用全局内存常驻的基础 DataFrame（避免每轮候选变体重复磁盘 I/O）。
-  2. 对训练集应用变体特征工程生成 $X_{\text{train}}$，对评估集应用同一变体生成 $X_{\text{eval}}$。
+  2. 对训练集应用变体特征工程生成 $`X_{\mathrm{train}}`$，对评估集应用同一变体生成 $`X_{\mathrm{eval}}`$。
   3. 处理新增特征中的 NaN / Inf（自动填充中位数或 0，防止底层 LightGBM 报错）。
   4. 保持 `LightGBMTweedieModel(tweedie_variance_power=1.5)` 超参不变，拟合训练数据。
-  5. 在评估集上生成预测值 $\hat{y}_{\text{eval}}$。
+  5. 在评估集上生成预测值 $`\hat{y}_{\mathrm{eval}}`$。
 - **主适应度指标与辅助指标**：
-  - **主指标 (Primary Metric)**：`normalized_gini`（值域 $[0, 1]$，越大越优）。
+  - **主指标 (Primary Metric)**：`normalized_gini`（值域 $`[0, 1]`$，越大越优）。
   - **辅助指标**：`top_10_recall`、`neg_rmse`（负 RMSE，越大越优）、`spearman_corr`。
 - **异常诊断反馈**：
   若发生语法错误、内存溢出或列缺失等异常，捕获堆栈并构造 `AlphaEvolveEvaluationInsight`（如 `Runtime Error: ValueError(...)`），连同惩罚得分 `-1e12` 提交给服务，供 Gemini 在下一轮中避开该类错误。
@@ -225,7 +225,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 #### 4.5.1 辩证思考：四大评估指标的特性与权衡
 在移动游戏 180 天 LTV 预测场景中，四大评估指标代表了不同的业务与算法侧重点：
 - **Normalized Gini（归一化基尼系数，默认基准）**：
-  - *原理与优势*：衡量全量用户预测值对真实 180 天累积收入分布的洛伦兹曲线覆盖能力（值域 $[0, 1]$）。对单笔偶发极端巨鲸充值具有极佳的秩鲁棒性，不会因单个离群点而扭曲全局评估。
+  - *原理与优势*：衡量全量用户预测值对真实 180 天累积收入分布的洛伦兹曲线覆盖能力（值域 $`[0, 1]`$）。对单笔偶发极端巨鲸充值具有极佳的秩鲁棒性，不会因单个离群点而扭曲全局评估。
   - *适用场景*：最适合作为全周期、宏观大盘获客投放（UA 买量出价）与全量用户分层运营的主选优指标。
 - **Top-10% Revenue Recall（头部收入召回率）**：
   - *原理与优势*：衡量被模型预测为最高潜力的前 10% 用户，实际贡献了整体大盘 180 天总流水的百分比。
@@ -327,7 +327,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 针对交付给最终客户前必须清理个人环境信息的要求，系统设计了自动化脱敏工具链：
 1. **0 硬编码凭据设计**：
-   - 脱敏脚本 [`scripts/mask_credentials.py`](file:///Users/ianychen/Projects/mini-LTV-demo/scripts/mask_credentials.py) 自身不包含任何真实密钥或账户字样。
+   - 脱敏脚本 [`scripts/mask_credentials.py`](scripts/mask_credentials.py) 自身不包含任何真实密钥或账户字样。
    - 运行时优先从 `config.yaml` 提取当前配置的凭据上下文，动态扫描项目中的所有文本文件。
 2. **全项目深度净化**：
    - 自动覆盖 `config.yaml`、Markdown 说明文档、测试套件代码以及 `artifacts/` 历史产物。
@@ -335,6 +335,9 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 3. **无依赖轻量化与 Dry-run 机制**：
    - 仅依赖 Python 3 原生标准库（`sys`, `os`, `re`, `pathlib`, `argparse`），即使删除虚拟环境后仍可在裸机直接调用。
    - 提供 `make mask-dry` 预览命令，在修改前完整打印命中文件与匹配行数，确保脱敏操作精准可控。
+4. **安全凭据暂存与一键恢复 (`make unmask`)**：
+   - 执行 `make mask` 时，自动将原真实凭据安全暂存于本地 `.credentials.backup`（受 `.gitignore` 保护，绝不提交至 Git）。
+   - 本地开发者后续可通过 `make unmask` 一键恢复个人工作环境，或通过 `make unmask PROJECT_ID=... APP_ID=...` 指定自定义凭据恢复。
 
 ---
 
@@ -401,6 +404,7 @@ make report      # 自动在默认浏览器中打开 HTML 报告 (默认最新�
 make test        # 运行 tests/ 自动化测试集
 make mask        # 一键将全项目配置与文档中的个人凭据脱敏遮盖为占位符
 make mask-dry    # 脱敏预览 (Dry-run)，不实际修改文件
+make unmask      # 一键从本地 .credentials.backup 恢复凭证 (支持 PROJECT_ID=... APP_ID=...)
 make clean       # 清理临时文件与缓存
 ```
 

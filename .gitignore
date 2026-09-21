@@ -24,6 +24,8 @@ Thumbs.db
 
 # Task and internal specs
 TASK_SPEC.md
+.credentials.backup
+AGENTS.md
 
 # Python bytecode and caches
 __pycache__/
