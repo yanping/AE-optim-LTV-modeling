@@ -294,7 +294,12 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 1. **0 硬编码凭据设计**：脱敏脚本 [`scripts/mask_credentials.py`](scripts/mask_credentials.py) 自身不含真实密钥或账户字样，动态从 `config.yaml` 提取凭据上下文。
 2. **全项目深度净化**：自动扫描 `config.yaml`、Markdown 说明文档、测试套件代码以及 `artifacts/` 历史产物，替换为 `<YOUR_GCP_PROJECT_ID>` 与 `<YOUR_GE_APP_ID>`。
 3. **无依赖轻量化与 Dry-run 机制**：仅依赖 Python 3 标准库，支持 `make mask-dry` 预览匹配结果。
-4. **安全凭据暂存与一键恢复 (`make unmask`)**：执行 `make mask` 时自动将真实凭据安全暂存至本地 `.credentials.backup`（受 `.gitignore` 保护，绝不提交至 Git）。可通过 `make unmask` 一键恢复。
+4. **安全凭据暂存与一键恢复 (`make unmask`)**：执行 `make mask` 时自动将真实凭据安全暂存至本地 `.credentials.backup`（受 `.gitignore` 保护，绝不提交至 Git）。可通过 `make unmask` 一键恢复。备份文件格式范例：
+   ```yaml
+   # AlphaEvolve local credentials backup
+   project_id: my-gcp-project-123
+   ge_app_id: gemini-enterprise-12345678
+   ```
 
 ---
 

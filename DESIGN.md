@@ -300,7 +300,12 @@ An automated sanitization toolchain prepares codebases for client delivery or op
 1. **Zero Hardcoded Secrets**: The script [`scripts/mask_credentials.py`](scripts/mask_credentials.py) contains no embedded keys or sensitive identifiers, extracting active credentials dynamically from `config.yaml`.
 2. **Repository-Wide Sanitization**: Scans `config.yaml`, documentation, test suites, and `artifacts/` history, replacing credentials with `<YOUR_GCP_PROJECT_ID>` and `<YOUR_GE_APP_ID>`.
 3. **Lightweight & Dry-Run Capable**: Built exclusively on Python 3 standard libraries (`sys`, `os`, `re`, `pathlib`, `argparse`). `make mask-dry` previews affected files without writing to disk.
-4. **Secure Backup & Instant Restore**: `make mask` backs up active credentials to `.credentials.backup` (ignored by Git via `.gitignore`). `make unmask` restores the development environment in a single step.
+4. **Secure Backup & Instant Restore**: `make mask` backs up active credentials to `.credentials.backup` (ignored by Git via `.gitignore`). `make unmask` restores the development environment in a single step. File format example:
+   ```yaml
+   # AlphaEvolve local credentials backup
+   project_id: my-gcp-project-123
+   ge_app_id: gemini-enterprise-12345678
+   ```
 
 ---
 

@@ -262,7 +262,20 @@ make unmask
 make unmask PROJECT_ID=my-gcp-project-123 APP_ID=gemini-enterprise-999999
 ```
 
-### 7.3 Clean Local Virtual Environment
+### 7.3 `.credentials.backup` File Format Example
+The `.credentials.backup` file resides in the project root directory (protected by `.gitignore` and never committed to Git) to store developer credentials.
+
+While `make mask` creates this file automatically, you can also manually create or replicate it with the following format (supports standard YAML / key-value syntax):
+```yaml
+# AlphaEvolve local credentials backup
+# Generated automatically by scripts/mask_credentials.py
+# DO NOT COMMIT THIS FILE (protected by .gitignore)
+project_id: my-gcp-project-123
+ge_app_id: gemini-enterprise-12345678
+```
+Once created, simply execute `make unmask` to automatically parse this file and restore your active credentials into `config.yaml` and throughout the codebase.
+
+### 7.4 Clean Local Virtual Environment
 ```bash
 rm -rf venv/
 ```

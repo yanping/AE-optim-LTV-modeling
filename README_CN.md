@@ -260,7 +260,20 @@ make unmask
 make unmask PROJECT_ID=my-gcp-project-123 APP_ID=gemini-enterprise-999999
 ```
 
-### 7.3 清理本地虚拟环境
+### 7.3 `.credentials.backup` 本地凭据备份格式范例
+`.credentials.backup` 存放在项目根目录下（已被 `.gitignore` 保护，绝不会被提交到 Git），用于记录开发者的真实凭据。
+
+执行 `make mask` 时系统会自动生成该文件；若需要手动创建或复现该备份，其格式范例如下（标准 YAML / 键值对格式）：
+```yaml
+# AlphaEvolve local credentials backup
+# Generated automatically by scripts/mask_credentials.py
+# DO NOT COMMIT THIS FILE (protected by .gitignore)
+project_id: my-gcp-project-123
+ge_app_id: gemini-enterprise-12345678
+```
+创建后，直接运行 `make unmask` 即可自动读取该文件，一键恢复至全局代码与 `config.yaml` 配置文件中。
+
+### 7.4 清理本地虚拟环境
 ```bash
 rm -rf venv/
 ```
