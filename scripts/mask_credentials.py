@@ -200,13 +200,13 @@ def mask_files(
             # Add helpful comment next to project_id placeholder
             content = re.sub(
                 r'project_id:\s*["\']?' + re.escape(PROJECT_ID_PLACEHOLDER) + r'["\']?.*',
-                f'project_id: "{PROJECT_ID_PLACEHOLDER}" # 请在此填入您的 Google Cloud Project ID (例如: my-gcp-project-123)',
+                f'project_id: "{PROJECT_ID_PLACEHOLDER}" # Enter your Google Cloud Project ID here (e.g., my-gcp-project-123)',
                 content
             )
             # Add helpful comment next to ge_app_id placeholder
             content = re.sub(
                 r'ge_app_id:\s*["\']?' + re.escape(GE_APP_ID_PLACEHOLDER) + r'["\']?.*',
-                f'ge_app_id: "{GE_APP_ID_PLACEHOLDER}" # 请在此填入您的 Gemini Enterprise App/Engine ID (例如: gemini-enterprise-12345678)',
+                f'ge_app_id: "{GE_APP_ID_PLACEHOLDER}" # Enter your Gemini Enterprise App/Engine ID here (e.g., gemini-enterprise-12345678)',
                 content
             )
 

@@ -1,42 +1,43 @@
 # ==============================================================================
 # Google Cloud AlphaEvolve LTV Forecasting Configuration
 # ==============================================================================
-# 本文件为项目的【唯一全局配置文件】(Single Source of Truth)，统一管理 GCP 凭据、
-# 演化超参数、模型混合配比、数据集三向切分与并行评估设置。
+# Single Source of Truth for the project. Manages GCP credentials,
+# evolution hyperparameters, model mixture weights, dataset 3-way split,
+# and parallel evaluation settings.
 # ==============================================================================
 
-# 1. Google Cloud & Gemini Enterprise 凭据与服务配置
+# 1. Google Cloud & Gemini Enterprise Credentials and Service Settings
 gcp:
-  project_id: "<YOUR_GCP_PROJECT_ID>" # 请在此填入您的 Google Cloud Project ID (例如: my-gcp-project-123)
+  project_id: "<YOUR_GCP_PROJECT_ID>" # Enter your Google Cloud Project ID here (e.g., my-gcp-project-123)
   location: "global"
   collection: "default_collection"
-  ge_app_id: "<YOUR_GE_APP_ID>" # 请在此填入您的 Gemini Enterprise App/Engine ID (例如: gemini-enterprise-12345678)
+  ge_app_id: "<YOUR_GE_APP_ID>" # Enter your Gemini Enterprise App/Engine ID here (e.g., gemini-enterprise-12345678)
   assistant: "default_assistant"
   base_url: "discoveryengine.googleapis.com"
-  # 官方 alpha_evolve 库路径 (若在其他路径可在此直接指定绝对或相对路径)
+  # Official alpha_evolve library path (can specify absolute or relative path)
   alpha_evolve_path: "./alpha_evolve"
 
-# 2. 演化控制与超参数设置
+# 2. Evolution Control & Hyperparameters
 evolution:
   title: "Mobile Game LTV Feature Engineering Evolution"
   problem_description: "Evolve feature engineering transformations for 180-day mobile game LTV forecasting, maximizing Normalized Gini and Top-10% Revenue Recall using a fixed LightGBM Tweedie regression baseline."
   program_language: "python"
-  max_programs_generated: 20       # 默认最大生成代码变体数 (可由 make run programs=N 覆盖)
-  max_programs_evaluated: 20       # 默认最大评估代码变体数 (可由 make run programs=N 覆盖)
-  concurrency: 4                   # 云端生成并发度
-  worker_concurrency: 4            # 本地并行评估 Worker 线程数
-  parallel_evaluation: true        # 启用本地并行线程池评估 (LTV 模型在 CPU 上并行拟合)
-  idle_timeout_s: 120              # 无新变体生成时的等待超时时间 (秒)
-  primary_metric: "normalized_gini" # 核心选择与优化主指标 (也可为 top_10_recall 或 neg_rmse)
+  max_programs_generated: 20       # Default maximum program generation budget (override with make run programs=N)
+  max_programs_evaluated: 20       # Default maximum program evaluation budget (override with make run programs=N)
+  concurrency: 4                   # Cloud generation concurrency
+  worker_concurrency: 4            # Local parallel evaluation worker thread pool size
+  parallel_evaluation: true        # Enable local parallel thread pool evaluation (LTV model fits in parallel on CPU)
+  idle_timeout_s: 120              # Idle timeout while waiting for new program generation (seconds)
+  primary_metric: "normalized_gini" # Primary metric for champion selection (supported: normalized_gini, top_10_recall, neg_rmse, spearman_corr)
 
-# 3. Gemini 大模型生成权重混合配比
+# 3. Gemini Foundation Model Mixture Weights
 models:
   - name: "gemini-3.5-flash"
     weight: 0.70
   - name: "gemini-3.1-pro-preview"
     weight: 0.30
 
-# 4. 数据集三向切分配置 (全量 train_wide.csv 科学切分: 60% 训练, 20% 评估, 20% 留出)
+# 4. Dataset 3-Way Partitioning (Full train_wide.csv split: 60% Train, 20% Eval, 20% Holdout)
 dataset:
   raw_wide_path: "./data/train_wide.csv"
   train_split_path: "./data/train_split.csv"
@@ -46,8 +47,8 @@ dataset:
   eval_ratio: 0.20
   holdout_ratio: 0.20
   random_state: 42
-  split_method: "stratified"       # stratified (多因素分层) 或 oot (时序分期)
+  split_method: "stratified"       # "stratified" (multi-factor stratified) or "oot" (out-of-time)
 
-# 5. 产物目录设置
+# 5. Artifacts Output Directory
 artifacts:
   dir: "./artifacts"

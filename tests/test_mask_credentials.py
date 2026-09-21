@@ -79,7 +79,7 @@ def test_mask_files_and_dry_run(tmp_path):
     cfg_content = cfg.read_text(encoding="utf-8")
     assert PROJECT_ID_PLACEHOLDER in cfg_content
     assert GE_APP_ID_PLACEHOLDER in cfg_content
-    assert "请在此填入您的 Google Cloud Project ID" in cfg_content
+    assert "Enter your Google Cloud Project ID here" in cfg_content
     assert "secret-proj" not in cfg_content
     assert "secret-app" not in cfg_content
 

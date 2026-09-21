@@ -1,122 +1,128 @@
-# Mobile Game LTV 建模方案探索、对比与业务洞察 (INSIGHT.md)
+# Mobile Game LTV Modeling Exploration, Benchmarks, and Business Insights (INSIGHT.md)
 
-本文档归档了在针对 Kaggle 竞赛 [Mobile Game LTV Forecasting Challenge](https://www.kaggle.com/competitions/mobile-game-ltv-forecasting-challenge) 进行建模探索过程中，对比的多类模型方案、实验数据、数学机理归因以及最终决策依据。
+**English** | [简体中文](INSIGHT_CN.md)
 
----
+This document archives the modeling explorations, comparative benchmarks across multiple architectures, empirical evaluation data, mathematical mechanism attributions, and final architectural decisions conducted for the Kaggle competition [Mobile Game LTV Forecasting Challenge](https://www.kaggle.com/competitions/mobile-game-ltv-forecasting-challenge).
 
-## 1. 业务挑战与问题本质
-
-在移动游戏长线价值预测（利用前 7 天行为特征预测第 8 至 180 天的累计 LTV）中，数据分布具有极其鲜明的**两大病态特征**：
-
-1. **极端零膨胀（Zero-Inflation）**：全量 75,464 名用户中，有 **41.11%** 的用户在观测窗口之后完全没有产生任何变现（LTV = \$0.00）。
-2. **极长尾正向偏态与巨鲸效应（Heavy-Tailed Whales）**：付费用户中位数仅约 **\$4.08**，但头部大 R 贡献巨大，数据集内最高单人 LTV 高达 **\$62,046.47**，全量标准差达到 \$431.48（均值的近 15 倍）。
-
-对于这类数据，传统的标准回归模型往往会面临“拟合了巨鲸就破坏了零值，拟合了零值就低估了巨鲸”的两难境地。
+> 📘 **Related Documentation**:
+> - For full system architecture and component designs, see [DESIGN.md](DESIGN.md).
+> - For user manual, environment setup, and CLI guides, see [README.md](README.md).
 
 ---
 
-## 2. 探索的模型方案概览
+## 1. Business Challenge & Problem Nature
 
-在 Baseline 选型阶段，共深入探索并横向对比了以下 4 大类技术路线：
+In long-term mobile game player lifetime value prediction (predicting cumulative Day 8 to Day 180 LTV from Day 0 to Day 7 behavioral features), the underlying data distribution exhibits two **pronounced pathological characteristics**:
 
-1. **LightGBM + Tweedie 复合泊松-伽马分布 (`objective='tweedie'`)**：
-   - 数学假设：$`Y \sim \mathrm{Tweedie}(p, \mu, \phi)`$，其中方差幂 $`1 < p < 2`$。
-   - 理论上把观测值视为一个泊松过程产生的充值频次 $`N \sim \mathrm{Poisson}(\lambda)`$，与每次充值金额遵循的伽马分布 $`Z_i \sim \mathrm{Gamma}(\alpha, \beta)`$ 的复合随机变量 $`Y = \sum_{i=1}^N Z_i`$。
-   - 探索了不同的方差幂参数：$`p \in \{1.1, 1.2, 1.5, 1.8\}`$。
+1. **Extreme Zero-Inflation**: Across all 75,464 players, **41.11%** generated zero revenue after the initial 7-day observation window (LTV = \$0.00).
+2. **Heavy-Tailed Positive Skewness & Whale Dynamics**: While the median paying user spent only approximately **\$4.08**, top whales contributed outsized revenue—the maximum individual LTV reached **\$62,046.47**, and the overall standard deviation stood at \$431.48 (nearly 15 times the mean).
 
-2. **LightGBM + 标准 MSE/RMSE 回归 (`objective='regression'`)**：
-   - 业界最常见的 GBDT 回归基线，直接以均方误差（MSE）为目标函数。
-
-3. **LightGBM + 对数变换回归 (`log1p(y) -> expm1(pred)`)**：
-   - 针对长尾偏态数据的经典变换：训练时目标变量取 $`\log(1 + y)`$，预测时通过 $`\exp(\hat{y}) - 1`$ 还原。
-
-4. **两阶段跨栏模型 (Two-Stage Hurdle Model)**：
-   - **阶段一 (Classifier)**：LightGBM 二分类器预测用户是否会在远期付费 $`P(\mathrm{LTV} > 0 \mid X)`$（以 AUC 为优化指标）。
-   - **阶段二 (Regressor)**：仅在正样本（历史付费用户）子集上训练 LightGBM 回归器，预测付费金额期望 $`E[\mathrm{LTV} \mid \mathrm{LTV} > 0, X]`$。
-   - **最终预测**：$`\hat{y} = P(\mathrm{LTV} > 0 \mid X) \times E[\mathrm{LTV} \mid \mathrm{LTV} > 0, X]`$。
+Standard regression models trained on such data inevitably face a dilemma: *fitting the whales destroys the zero-value calibration, while accommodating zero values severely underestimates the high-value whales*.
 
 ---
 
-## 3. 留出集横向评测基准数据
+## 2. Explored Model Architectures
 
-在完全相同的 20% 多因素科学分层留出集（**15,093 名用户**，包含 41.1% 零值与最高 \$24,456.16 的留出集巨鲸）上，各方案的表现对比如下：
+During baseline selection, four major modeling paradigms were comprehensively evaluated:
 
-| 模型方案 | 留出集 RMSE (竞赛主指标) | MAE (平均绝对误差) | Normalized Gini (排序与区分度) | Top-10% Revenue Recall (业务价值捕获) | Top-20% Revenue Recall | Spearman 秩相关系数 |
+1. **LightGBM + Tweedie Compound Poisson-Gamma Distribution (`objective='tweedie'`)**:
+   - Mathematical assumption: $`Y \sim \mathrm{Tweedie}(p, \mu, \phi)`$, with variance power $`1 < p < 2`$.
+   - The observed cumulative LTV is formulated as a compound random variable $`Y = \sum_{i=1}^N Z_i`$, where purchase frequency follows a Poisson process $`N \sim \mathrm{Poisson}(\lambda)`$ and individual transaction amounts follow a Gamma distribution $`Z_i \sim \mathrm{Gamma}(\alpha, \beta)`$.
+   - Evaluated variance power parameters: $`p \in \{1.1, 1.2, 1.5, 1.8\}`$.
+
+2. **LightGBM + Standard MSE/RMSE Regression (`objective='regression'`)**:
+   - Standard GBDT regression baseline directly minimizing Mean Squared Error (MSE).
+
+3. **LightGBM + Log-Transformed Regression (`log1p(y) -> expm1(pred)`)**:
+   - Classic transformation for heavy-tailed skewed targets: training on $`\log(1 + y)`$ and restoring predictions via $`\exp(\hat{y}) - 1`$.
+
+4. **Two-Stage Hurdle Model**:
+   - **Stage 1 (Classifier)**: LightGBM binary classifier predicting whether a user will convert in the future $`P(\mathrm{LTV} > 0 \mid X)`$ (optimized for AUC).
+   - **Stage 2 (Regressor)**: LightGBM regressor trained strictly on positive samples (historically paying users), predicting expected payment volume $`E[\mathrm{LTV} \mid \mathrm{LTV} > 0, X]`$.
+   - **Combined Prediction**: $`\hat{y} = P(\mathrm{LTV} > 0 \mid X) \times E[\mathrm{LTV} \mid \mathrm{LTV} > 0, X]`$.
+
+---
+
+## 3. Holdout Set Benchmark Evaluation
+
+Evaluated on the identical 20% multi-factor stratified holdout set (**15,093 users**, containing 41.1% zero-payers and a maximum holdout whale of \$24,456.16):
+
+| Model Architecture | Holdout RMSE (Competition Metric) | MAE (Mean Absolute Error) | Normalized Gini (Ranking & Discrimination) | Top-10% Revenue Recall (Whale Capture) | Top-20% Revenue Recall | Spearman Rank Correlation |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **LightGBM (Tweedie, p=1.5)** | **303.25** | **\$25.66** (最优) | **0.9319** (最优) | **84.99%** (最优) | **90.52%** | **0.8193** (显著领先) |
+| **LightGBM (Tweedie, p=1.5)** | **303.25** | **\$25.66** (Best) | **0.9319** (Best) | **84.99%** (Best) | **90.52%** | **0.8193** (Decisive Lead) |
 | LightGBM (Tweedie, p=1.1) | 320.37 | \$27.84 | 0.9297 | 85.06% | 90.61% | 0.8185 |
 | LightGBM (Tweedie, p=1.2) | 315.07 | \$27.12 | 0.9307 | 84.97% | 90.55% | 0.8190 |
 | LightGBM (Tweedie, p=1.8) | 307.34 | \$26.15 | 0.9288 | 84.56% | 90.41% | 0.8172 |
-| **LightGBM (标准 RMSE 回归)** | **290.68** (最低) | \$29.50 | 0.9309 | 84.46% | 90.58% | 0.7245 |
-| **两阶段 Hurdle 模型** | 297.30 | \$29.02 | 0.9225 | 84.44% | 90.03% | 0.8024 |
-| **LightGBM (log1p 变换)** | 335.85 | \$32.40 | 0.9209 | 83.36% | 89.15% | 0.8012 |
+| **LightGBM (Standard RMSE)** | **290.68** (Lowest) | \$29.50 | 0.9309 | 84.46% | 90.58% | 0.7245 |
+| **Two-Stage Hurdle Model** | 297.30 | \$29.02 | 0.9225 | 84.44% | 90.03% | 0.8024 |
+| **LightGBM (log1p Transform)** | 335.85 | \$32.40 | 0.9209 | 83.36% | 89.15% | 0.8012 |
 
 ---
 
-## 4. 深度机理剖析与经验总结
+## 4. In-Depth Mechanism Analysis & Empirical Takeaways
 
-### 经验 1：为什么 Tweedie 在业务核心指标上全面胜出？
+### Takeaway 1: Why Tweedie Dominates Across Core Business Metrics
 
-1. **天然适配零膨胀物理过程**：
-   - 移动游戏变现的本质即是“充值频次 $`\times`$ 单笔客单价”。Tweedie 复合泊松-伽马分布在数学公式层面上精准还原了这一物理生成机制，使模型无需任何人工启发式规则即可在 0 点处赋予集中概率质量，并在正实数区间平滑拟合正偏态。
-2. **消除了无付费人群的伪底噪**：
-   - 观察预测值的十等分位（Decile 8 至 Decile 10，真实平均 LTV 仅为 \$0.04 ~ \$0.17）：
-     - **标准 RMSE 模型**：由于损失函数强行追求方差极小化，对大量非付费人群预测出了高达 **~\$4.16** 的伪底噪；
-     - **Tweedie 模型**：预测均值精准落在了 **\$0.02 ~ \$0.16**，与真实物理分布完全一致。
-   - 这也是 Tweedie 的 MAE 显著优于标准模型（**\$25.66 vs \$29.50**）的核心原因。
-3. **极具商业价值的排序与大 R 捕获能力**：
-   - Tweedie 取得了全场最高的 **Gini 系数 (0.9319)** 与最高的 **Spearman 秩相关 (0.8193)**。
-   - 在投放决策中最关键的 **Top-10% Revenue Recall 达到 84.99%**，这意味着买量投放算法仅需选拔出模型预测排名前 10% 的用户，即可网罗未来 85% 的全服大盘收入，提升度（Lift）达 **8.49 倍**。
+1. **Natural Alignment with the Physical Zero-Inflation Process**:
+   - Mobile game monetization fundamentally operates as $\text{Purchase Frequency} \times \text{Average Order Value}$. The Tweedie compound Poisson-Gamma distribution mathematically reproduces this physical generation mechanism. It assigns discrete probability mass at zero without heuristic rules while smoothly fitting the continuous positive skew.
+2. **Elimination of Artificial Baseline Noise for Non-Payers**:
+   - Examining predicted values across the bottom deciles (Deciles 8 to 10, where actual average LTV is only \$0.04 to \$0.17):
+     - **Standard RMSE Model**: Because its loss strictly minimizes global variance, it assigned an artificial baseline noise of **~\$4.16** to millions of non-paying players.
+     - **Tweedie Model**: Accurately centered predictions at **\$0.02 to \$0.16**, faithfully mirroring reality.
+   - This calibration explains why Tweedie's MAE is substantially superior (**\$25.66 vs \$29.50**).
+3. **High-Value Ranking and Whale Capture Power**:
+   - Tweedie achieved the highest **Normalized Gini (0.9319)** and **Spearman Rank Correlation (0.8193)**.
+   - For user acquisition bidding, its **Top-10% Revenue Recall reached 84.99%**—meaning UA bid allocation targeting the top 10% predicted users captures 85% of total server revenue, achieving an **8.49x Lift**.
 
 ---
 
-### 经验 2：为什么标准 RMSE 回归在竞赛榜单 RMSE 上数值略低？
+### Takeaway 2: Why Standard RMSE Regression Had Slightly Lower Competition RMSE
 
-1. **RMSE 评价指标的平方惩罚特性**：
+1. **Quadratic Penalty of the RMSE Loss**:
    $$
    \mathrm{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^N (y_i - \hat{y}_i)^2}
    $$
-   对于留出集中单个 LTV 为 \$24,456 的超级大 R，哪怕预测为 \$10,000，其单一残差平方即高达 $`(14,456)^2 \approx 2.09 \times 10^8`$。
-2. **标准模型的优化偏向**：
-   - 标准 LightGBM 以 MSE 为损失函数，其一阶导与二阶导决定了梯度全被少数几个万级巨鲸所主导，树分裂时会牺牲绝大多数普通用户的预测精度来强行“迁就”这几个极端值。
-   - 虽然这使竞赛维度的纯 RMSE 数值从 303 降到 290，但其代价是破坏了排序一致性（Spearman 秩相关由 0.8193 骤跌至 0.7245），且给全体非付费用户注入了 \$4+ 的底噪，在工业级买量出价与实际 ROI 决策中会带来严重的误判。
+   For a single whale with \$24,456 LTV, predicting \$10,000 incurs a squared residual of $`(14,456)^2 \approx 2.09 \times 10^8`$.
+2. **Optimization Bias of Standard GBDT**:
+   - Because standard LightGBM minimizes MSE, its first and second gradients are overwhelmingly dominated by a handful of extreme whales. Tree splits sacrifice prediction accuracy across the vast majority of normal players to accommodate outlier extremes.
+   - While this lowered raw RMSE from 303 to 290, it severely degraded rank ordering (Spearman correlation collapsed from 0.8193 to 0.7245) and injected \$4+ artificial noise into non-paying users—rendering it unreliable for actual user tiering and ROI bidding decisions.
 
 ---
 
-### 经验 3：为什么两阶段 Hurdle 模型不够理想？
+### Takeaway 3: Why Two-Stage Hurdle Models Fall Short
 
-1. **误差累积与乘积放大**：
-   - 两阶段模型将预测拆解为 $`\hat{p} \times \hat{v}`$。第一阶段分类器的概率校准误差（Calibration Error）与第二阶段回归器的残差在相乘后产生误差耦合与方差膨胀。
-2. **训练样本偏差（Sample Selection Bias）**：
-   - 第二阶段回归器仅在有历史充值的用户上训练，丢失了未充值用户的特征空间分布，导致其对边界弱付费群体的泛化能力减弱，归一化 Gini 降至 0.9225。
-3. **维护成本翻倍**：
-   - 相比于 Tweedie 单模型端到端训练与推理，两阶段方案需要维护两个独立模型的超参调优、特征管道与序列化文件，工程复杂度与延迟成倍上升。
-
----
-
-### 经验 4：为什么对数变换 (Log1p) 方案严重退化？
-
-1. **指数还原的极端放大效应**：
-   - 在对数空间 $`\log(1+y)`$ 中，均方误差惩罚的是相对对数残差。当通过 $`\exp(\cdot)-1`$ 还原回真实金额空间时，高值区微小的预测过冲会被指数爆炸放大，产生无法容忍的极端异常值。
-2. **琴生不等式（Jensen's Inequality）导致的系统性低估**：
-   - 由于对数函数是凹函数，由琴生不等式有 $`E[\log(1+Y)] \le \log(1+E[Y])`$。直接取指数还原后的点预测值是几何均值而非算术均值，会产生严重的系统性低估（Systematic Underestimation），使得留出集 RMSE 飙升至 335.85。
+1. **Error Propagation and Multiplicative Variance Expansion**:
+   - The two-stage formulation decomposes predictions into $`\hat{p} \times \hat{v}`$. Calibration errors in Stage 1 multiply with Stage 2 residuals, compounding variance.
+2. **Sample Selection Bias**:
+   - Stage 2 regressors are trained exclusively on historical payers, discarding feature space information from non-payers and weakening generalization on borderline low-propensity cohorts (Normalized Gini drops to 0.9225).
+3. **Operational Overhead Doubled**:
+   - Managing two independent hyperparameter grids, pipelines, and model artifacts introduces unnecessary latency and operational complexity compared to single-model Tweedie training.
 
 ---
 
-### 经验 5：Tweedie 方差幂参数 $`p`$ 的选型权衡
+### Takeaway 4: Why Log-Transformation (Log1p) Fails Severely
 
-Tweedie 分布的方差形式为 $`\mathrm{Var}(Y) = \phi \cdot \mu^p`$：
-- 当 $`p \to 1.0`$ 时：更接近泊松分布，侧重拟合离散事件发生计数，Top-10% 召回率稍高（85.06%），但对长尾连续金额的惩罚较弱，RMSE 偏大（320.37）；
-- 当 $`p \to 2.0`$ 时：更接近纯伽马分布，对极值方差包容度过大；
-- **$`p = 1.5`$（复合金德尔贝格分布 Compound Poisson-Gamma）**：在频次分布（Poisson）与客单价分布（Gamma）之间达成了完美的均衡，获得了最优的 Gini 系数（0.9319）、最优的 MAE（\$25.66）与极高的业务召回率（84.99%），同时将 RMSE 稳定在 303.25。
+1. **Exponential Amplification Upon Restoration**:
+   - Minimizing MSE in logarithmic space $`\log(1+y)`$ penalizes relative log residuals. Reverting via $`\exp(\cdot) - 1`$ exponentially magnifies slight overestimations in high-value ranges into massive prediction spikes.
+2. **Systematic Underestimation via Jensen's Inequality**:
+   - Because the logarithm is strictly concave, Jensen's Inequality dictates $`E[\log(1+Y)] \le \log(1+E[Y])`$. Directly exponentiating point predictions yields the geometric mean rather than the arithmetic mean, causing severe systematic underestimation that drives holdout RMSE up to 335.85.
 
 ---
 
-## 5. 最终架构决策与基线收敛
+### Takeaway 5: Variance Power Trade-offs ($`p`$)
 
-基于上述深入探索与严谨实验证据：
+The Tweedie variance function satisfies $`\mathrm{Var}(Y) = \phi \cdot \mu^p`$:
+- As $`p \to 1.0`$: Approaches the Poisson distribution, prioritizing event counts with slightly higher Top-10% Recall (85.06%), but weakly penalizing continuous high values, leading to larger RMSE (320.37).
+- As $`p \to 2.0`$: Approaches the pure Gamma distribution, over-accommodating extreme variances.
+- **$`p = 1.5`$ (Compound Poisson-Gamma)**: Delivers an optimal trade-off between purchase frequency (Poisson) and spend depth (Gamma), securing the highest Gini (0.9319), lowest MAE (\$25.66), strong whale capture (84.99%), and robust RMSE (303.25).
 
-> **决策**：
-> 项目生产级代码全面收敛于 **LightGBM (Tweedie分布, $`p=1.5`$)** 单模型架构。
-> - 彻底清理其他方案的过渡冗余代码，保持代码库的极致精简、工业规范与高可维护性；
-> - 确保数据加载、特征工程、训练监控、留出集评估与十等分位营销分析全链路围绕 Tweedie 最佳实践构建。
+---
+
+## 5. Architectural Decision & Baseline Convergence
+
+Based on empirical evidence and mathematical analysis:
+
+> **Decision**:
+> The production codebase strictly converges on the single-model **LightGBM (Tweedie distribution, $`p=1.5`$)** baseline.
+> - All exploratory transitional code has been pruned to keep the codebase clean, robust, and maintainable;
+> - Data ingestion, feature engineering, evolution search loops, holdout benchmarking, and decile marketing analyses are fully unified around Tweedie best practices.

@@ -23,7 +23,8 @@ Thumbs.db
 *~
 
 # Task and internal specs
-TASK_SPEC.md
+TASK_SPEC*.md
+TASK_SPEC_CN.md
 .credentials.backup
 AGENTS.md
 
