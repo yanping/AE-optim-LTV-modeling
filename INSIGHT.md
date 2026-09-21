@@ -64,7 +64,7 @@ Evaluated on the identical 20% multi-factor stratified holdout set (**15,093 use
 ### Takeaway 1: Why Tweedie Dominates Across Core Business Metrics
 
 1. **Natural Alignment with the Physical Zero-Inflation Process**:
-   - Mobile game monetization fundamentally operates as $\text{Purchase Frequency} \times \text{Average Order Value}$. The Tweedie compound Poisson-Gamma distribution mathematically reproduces this physical generation mechanism. It assigns discrete probability mass at zero without heuristic rules while smoothly fitting the continuous positive skew.
+   - Mobile game monetization fundamentally operates as $`\text{Purchase Frequency} \times \text{Average Order Value}`$. The Tweedie compound Poisson-Gamma distribution mathematically reproduces this physical generation mechanism. It assigns discrete probability mass at zero without heuristic rules while smoothly fitting the continuous positive skew.
 2. **Elimination of Artificial Baseline Noise for Non-Payers**:
    - Examining predicted values across the bottom deciles (Deciles 8 to 10, where actual average LTV is only \$0.04 to \$0.17):
      - **Standard RMSE Model**: Because its loss strictly minimizes global variance, it assigned an artificial baseline noise of **~\$4.16** to millions of non-paying players.
@@ -79,9 +79,8 @@ Evaluated on the identical 20% multi-factor stratified holdout set (**15,093 use
 ### Takeaway 2: Why Standard RMSE Regression Had Slightly Lower Competition RMSE
 
 1. **Quadratic Penalty of the RMSE Loss**:
-   $$
-   \mathrm{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^N (y_i - \hat{y}_i)^2}
-   $$
+   $`\displaystyle \mathrm{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^N (y_i - \hat{y}_i)^2}`$
+
    For a single whale with \$24,456 LTV, predicting \$10,000 incurs a squared residual of $`(14,456)^2 \approx 2.09 \times 10^8`$.
 2. **Optimization Bias of Standard GBDT**:
    - Because standard LightGBM minimizes MSE, its first and second gradients are overwhelmingly dominated by a handful of extreme whales. Tree splits sacrifice prediction accuracy across the vast majority of normal players to accommodate outlier extremes.
