@@ -130,6 +130,7 @@ gcp:
   ge_app_id: "<YOUR_GE_APP_ID>"         # 请在此填入您的 Gemini Enterprise App/Engine ID
   assistant: "default_assistant"
   base_url: "discoveryengine.googleapis.com"
+  attribution_model: "gemini-3.8-flash" # 代码演化归因解读模型 (默认: gemini-3.8-flash，支持环境变量 GEMINI_ATTRIBUTION_MODEL 覆盖)
   alpha_evolve_path: "./alpha_evolve"   # 支持指定为外部路径
 
 # 2. 演化超参数
@@ -224,9 +225,11 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 - **🔍 演化代码 Diff 审查**：直观展示冠军代码与种子基线代码在 `# EVOLVE-BLOCK` 内的代码级 Diff 对比。
 - **🧠 冠军代码演化深度归因与业务机理解释 (Universal Attribution Engine)**：
   - **超越单一特征工程**：自适应感知特征工程、模型超参数体系、自定义损失与目标函数、数据预处理采样等任意算法组件的演化。
-  - **结合领域知识动态归因**：结合移动游戏 F2P 商业化领域知识库（180天 LTV 目标、D0~D7 观察窗、重尾零膨胀分布）由 Gemini 动态归因，深入剖析数学算法机理与商业化价值。
+  - **基于 Gemini 3.8 Flash 动态深度归因**：支持由最新 `gemini-3.8-flash` 在 `global` 区域进行动态深度归因，结合移动游戏 F2P 商业化领域知识库（180天 LTV 目标、D0~D7 观察窗、重尾零膨胀分布），深入剖析数学算法机理与商业化价值。报告页面自适应呈现归因模型徽标（如 `🤖 由 Gemini 3.8 Flash 结合手游 LTV 领域知识库动态归因`）。
+  - **全局端点智能路由与多级候选探测**：自动识别 `global` 全局端点（`aiplatform.googleapis.com`）与区域端点，内置 `gemini-3.8-flash` -> `gemini-3.5-flash` -> `gemini-1.5-flash` 级联探测机制，并支持环境变量 `GEMINI_ATTRIBUTION_MODEL` 灵活覆盖。
+  - **强化型本地 AST 语法树兜底与零报错降级**：若运行环境未开通 Vertex AI 外部模型权限或处于离线环境，系统自动无缝降级至本地强化 AST 领域解析引擎，对时序动量、非线性变换、零膨胀门限等特征进行智能分类与徽标呈现，输出友好日志且绝无侵入性错误。
   - **架构精简与战略启示**：深度分析代码剪枝与基线保留情况，提炼 3 大工业级算法迭代与业务落地战略启示。
-  - **本地秒级缓存与离线兜底**：归因结果自动持久化至 `code_attribution.json`，后续查看 0.05 秒秒级直出；支持无网/无凭据环境优雅降级。
+  - **本地秒级缓存与离线兜底**：归因结果自动持久化至 `code_attribution.json`，后续查看 0.05 秒秒级直出。
 
 ## 6. 工业级评测指标体系与商业化机理解析
 

@@ -130,6 +130,7 @@ gcp:
   ge_app_id: "<YOUR_GE_APP_ID>"         # Enter your Gemini Enterprise App/Engine ID here
   assistant: "default_assistant"
   base_url: "discoveryengine.googleapis.com"
+  attribution_model: "gemini-3.8-flash" # Gemini model for post-evolution attribution report (default: gemini-3.8-flash, overridable via GEMINI_ATTRIBUTION_MODEL)
   alpha_evolve_path: "./alpha_evolve"   # Configurable relative or absolute library path
 
 # 2. Evolution Hyperparameters
@@ -224,7 +225,9 @@ The generated `artifacts/<task_id>/evolution_report.html` provides in-depth tele
 - **🔍 Code Diff Inspector**: Side-by-side color-coded diff of `# EVOLVE-BLOCK` between Seed Baseline and Champion.
 - **🧠 Universal Evolution Attribution Engine**:
   - **Comprehensive Algorithmic Attribution**: Capable of attributing feature transformations, model hyperparameter configurations, custom loss functions, and sampling strategies.
-  - **Domain-Infused Insights**: Anchored in mobile F2P monetization principles (180-day target, D0-D7 observation window, zero-inflation, whale dynamics) for mathematical and commercial rationale.
+  - **Dynamic Attribution Powered by Gemini 3.8 Flash**: Employs `gemini-3.8-flash` via the Google Cloud global endpoint for dynamic technical and domain attribution, seamlessly mapping math formulations to F2P monetization dynamics (180-day target, D0-D7 observation window, zero-inflation, whale dynamics). Dynamically badges the report with active model metadata (e.g. `🤖 由 Gemini 3.8 Flash 结合手游 LTV 领域知识库动态归因`).
+  - **Global Endpoint Routing & Multi-Tier Model Cascades**: Automatically resolves the global Vertex AI endpoint (`aiplatform.googleapis.com`) and supports cascaded fallbacks (`gemini-3.8-flash` -> `gemini-3.5-flash` -> `gemini-1.5-flash`), with optional environment variable override (`GEMINI_ATTRIBUTION_MODEL`).
+  - **Enhanced AST Rule-Based Fallback Engine**: If running in an environment without Vertex AI Publisher Model access or completely offline, seamlessly degrades to an enhanced local AST parser that classifies time-momentum, log-transforms, zero-inflation gates, and ratio interactions with full domain semantics and zero error noise.
   - **Architectural Pruning & Strategic Takeaways**: Analyzes code pruning and synthesizes 3 industrial-grade deployment insights.
   - **Local Persistent Cache**: Attribution results persist to `code_attribution.json` for sub-50ms instant reload upon subsequent report opens.
 

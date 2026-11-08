@@ -146,10 +146,12 @@ def _generate_code_evolution_attribution_html(explanation_data: Dict[str, Any]) 
     - Preprocessing, sampling, and post-processing
     """
     source = explanation_data.get("source", "gemini")
+    model_name = explanation_data.get("model_name", "gemini-3.8-flash")
+    model_disp = " ".join(word.capitalize() for word in model_name.replace("-", " ").split())
     if source == "gemini":
-        source_badge = '<span style="background: #10b98122; color: #34d399; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid #10b98144;">🤖 由 Gemini 2.5 Flash 结合手游 LTV 领域知识库动态归因</span>'
+        source_badge = f'<span style="background: #10b98122; color: #34d399; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid #10b98144;">🤖 由 {model_disp} 结合手游 LTV 领域知识库动态归因</span>'
     elif source == "cached":
-        source_badge = '<span style="background: #3b82f622; color: #60a5fa; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid #3b82f644;">⚡ 来自本地归因缓存 (code_attribution.json)</span>'
+        source_badge = f'<span style="background: #3b82f622; color: #60a5fa; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid #3b82f644;">⚡ 来自本地归因缓存 ({model_disp})</span>'
     else:
         source_badge = '<span style="background: #64748b22; color: #94a3b8; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid #64748b44;">🛡️ 静态结构分析模式</span>'
 
@@ -673,13 +675,22 @@ def generate_html_report(
 
     # Retrieve or generate domain-grounded Gemini universal code attribution
     cache_path = art_dir / "code_attribution.json"
+    attr_model = os.environ.get(
+        "GEMINI_ATTRIBUTION_MODEL",
+        config.raw_config.get("gcp", {}).get("attribution_model", "gemini-3.8-flash")
+    )
+    attr_location = config.raw_config.get("gcp", {}).get(
+        "attribution_location",
+        config.raw_config.get("gcp", {}).get("location", "global")
+    )
     explanation_data = query_gemini_code_attribution(
         seed_code=seed_evolve,
         champ_code=champ_evolve,
         holdout_metrics=holdout,
         primary_metric=primary_metric,
         project_id=config.gcp_project_id,
-        location="us-central1",
+        location=attr_location,
+        model_name=attr_model,
         cache_path=cache_path,
     )
     code_evolution_attribution_html = _generate_code_evolution_attribution_html(explanation_data)

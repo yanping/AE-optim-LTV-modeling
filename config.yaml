@@ -14,6 +14,7 @@ gcp:
   ge_app_id: "<YOUR_GE_APP_ID>" # Enter your Gemini Enterprise App/Engine ID here (e.g., gemini-enterprise-12345678)
   assistant: "default_assistant"
   base_url: "discoveryengine.googleapis.com"
+  attribution_model: "gemini-3.8-flash" # Gemini foundation model for post-evolution code attribution report
   # Official alpha_evolve library path (can specify absolute or relative path)
   alpha_evolve_path: "./alpha_evolve"
 
@@ -22,8 +23,8 @@ evolution:
   title: "Mobile Game LTV Feature Engineering Evolution"
   problem_description: "Evolve feature engineering transformations for 180-day mobile game LTV forecasting, maximizing Normalized Gini and Top-10% Revenue Recall using a fixed LightGBM Tweedie regression baseline."
   program_language: "python"
-  max_programs_generated: 3       # Default maximum program generation budget (override with make run programs=N)
-  max_programs_evaluated: 3       # Default maximum program evaluation budget (override with make run programs=N)
+  max_programs_generated: 20       # Default maximum program generation budget (override with make run programs=N)
+  max_programs_evaluated: 20      # Default maximum program evaluation budget (override with make run programs=N)
   concurrency: 2                   # Cloud generation concurrency
   worker_concurrency: 2            # Local parallel evaluation worker thread pool size
   parallel_evaluation: true        # Enable local parallel thread pool evaluation (LTV model fits in parallel on CPU)
@@ -32,9 +33,9 @@ evolution:
 
 # 3. Gemini Foundation Model Mixture Weights
 models:
-  - name: "gemini-3.5-flash"
+  - name: "gemini-4-argon"
     weight: 0.70
-  - name: "gemini-3.1-pro-preview"
+  - name: "gemini-3.8-flash"
     weight: 0.30
 
 # 4. Dataset 3-Way Partitioning (Full train_wide.csv split: 60% Train, 20% Eval, 20% Holdout)
