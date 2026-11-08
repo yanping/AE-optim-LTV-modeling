@@ -22,10 +22,10 @@ evolution:
   title: "Mobile Game LTV Feature Engineering Evolution"
   problem_description: "Evolve feature engineering transformations for 180-day mobile game LTV forecasting, maximizing Normalized Gini and Top-10% Revenue Recall using a fixed LightGBM Tweedie regression baseline."
   program_language: "python"
-  max_programs_generated: 20       # Default maximum program generation budget (override with make run programs=N)
-  max_programs_evaluated: 20       # Default maximum program evaluation budget (override with make run programs=N)
-  concurrency: 4                   # Cloud generation concurrency
-  worker_concurrency: 4            # Local parallel evaluation worker thread pool size
+  max_programs_generated: 3       # Default maximum program generation budget (override with make run programs=N)
+  max_programs_evaluated: 3       # Default maximum program evaluation budget (override with make run programs=N)
+  concurrency: 2                   # Cloud generation concurrency
+  worker_concurrency: 2            # Local parallel evaluation worker thread pool size
   parallel_evaluation: true        # Enable local parallel thread pool evaluation (LTV model fits in parallel on CPU)
   idle_timeout_s: 120              # Idle timeout while waiting for new program generation (seconds)
   primary_metric: "normalized_gini" # Primary metric for champion selection (supported: normalized_gini, top_10_recall, neg_rmse, spearman_corr)

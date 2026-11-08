@@ -71,6 +71,11 @@ The underlying model uses a frozen **LightGBM (Tweedie distribution, $`p=1.5`$)*
 - **Python**: Python 3.11+
 - **GNU Make**: Workflow automation tool (`make --version`)
 - **Google Cloud SDK**: `gcloud` CLI (for GCP credential authentication and API interactions)
+- **OpenMP Runtime Library (`libgomp1`)**: LightGBM's compiled GBDT backend relies on OpenMP for CPU multi-threading. On Debian/Ubuntu Linux systems (including minimal cloud VM or container environments), ensure `libgomp1` is installed:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y libgomp1
+  ```
+  *(On CentOS/RHEL: `sudo yum install -y libgomp`; on Fedora: `sudo dnf install -y libgomp`)*
 
 ### 2.2 Create Python Virtual Environment & Install Dependencies (Mandatory on First Run)
 > [!IMPORTANT]
@@ -168,8 +173,8 @@ dataset:
 | :--- | :--- |
 | **`make setup`** | Create Python 3.11 `venv` and install all required dependencies (mandatory on first run). |
 | **`make auth`** | Launch browser to execute `gcloud auth application-default login` for ADC credentials. |
-| **`make split`** | Partition `data/train_wide.csv` into stratified 60% Train, 20% Eval, and 20% Holdout splits. |
-| **`make run`** | Launch evolution task, auto-assign `task_id`, archive to `artifacts/<task_id>/`, and **automatically generate HTML report** upon completion. |
+| **`make split`** | Partition `data/train_wide.csv` into stratified 60% Train, 20% Eval, and 20% Holdout splits. If split files already exist, interactively prompts whether to Overwrite, Backup & Replace (renames old files with timestamp so `config.yaml` remains untouched), or Cancel. (Supports non-interactive CLI flags: `make split mode=backup`, `mode=overwrite`, `mode=cancel`). |
+| **`make run`** | Launch evolution task, auto-assign `task_id`, archive to `artifacts/<task_id>/`, and **automatically generate HTML report** upon completion. *(Note: If pre-split data already exists under `data/`, `make run` directly loads it without re-splitting).* |
 | **`make run programs=2`** | **Smoke Test Execution**: Dynamically override program generation budget to 2 to quickly verify end-to-end flow. |
 | **`make run metric=recall`** | **Dynamic Primary Metric**: Supports `gini`, `recall`, `rmse`, `spearman` to guide Gemini mutations and select the champion. |
 | **`make run task_id=custom`** | Assign a custom task identifier for artifact archiving. |

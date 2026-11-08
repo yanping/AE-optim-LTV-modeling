@@ -79,7 +79,9 @@ class AlphaEvolveClient:
                         "ignore",
                         message="Your application has authenticated using end user credentials",
                     )
-                    self._credentials, _ = google.auth.default()
+                    self._credentials, _ = google.auth.default(
+                        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                    )
                 self._auth_request = google.auth.transport.requests.Request()
                 if not getattr(self._credentials, "quota_project_id", None):
                     logger.warning(

@@ -71,6 +71,11 @@
 - **Python**: Python 3.11+
 - **GNU Make**: 自动化工作流工具 (`make --version`)
 - **Google Cloud SDK**: `gcloud` CLI（用于 GCP 凭据鉴权与 API 交互）
+- **OpenMP 系统动态链接库 (`libgomp1`)**：LightGBM 底层 C/C++ GBDT 计算核心依赖 OpenMP 实现 CPU 多线程并行。在 Debian/Ubuntu 等 Linux 系统（尤其是精简版云服务器或容器环境）中，如遇 `libgomp.so.1` 缺失报错，需安装该系统库：
+  ```bash
+  sudo apt-get update && sudo apt-get install -y libgomp1
+  ```
+  *(CentOS/RHEL 系统请执行: `sudo yum install -y libgomp`；Fedora 系统请执行: `sudo dnf install -y libgomp`)*
 
 ### 2.2 创建 Python 虚拟环境与安装依赖 (首次运行必须执行)
 > [!IMPORTANT]
@@ -168,8 +173,8 @@ dataset:
 | :--- | :--- |
 | **`make setup`** | 创建 Python 3.11 `venv` 虚拟环境并自动安装所有依赖包（首次必须执行）。 |
 | **`make auth`** | 调起浏览器执行 `gcloud auth application-default login` 完成 ADC 鉴权。 |
-| **`make split`** | 将 `data/train_wide.csv` 按照 60% / 20% / 20% 分层切分为训练集、评估集、留出集。 |
-| **`make run`** | 启动演化任务，自动分配 `task_id`，隔离产物至 `artifacts/<task_id>/`，结束时**自动生成 HTML 报告**。 |
+| **`make split`** | 将 `data/train_wide.csv` 按照 60% / 20% / 20% 分层切分。若检测到已有切分数据，交互式提示用户选择：覆盖、重命名备份旧文件并保存新数据（推荐，无需改动 `config.yaml`）、或取消操作。（亦支持非交互传参：`make split mode=backup`、`mode=overwrite`、`mode=cancel`）。 |
+| **`make run`** | 启动演化任务，自动分配 `task_id`，隔离产物至 `artifacts/<task_id>/`，结束时**自动生成 HTML 报告**。（注：若 `data/` 下已存在切分好的数据，`make run` 会直接读取使用，不会重复切分）。 |
 | **`make run programs=2`** | **测试覆盖运行**：动态将代际预算覆盖为 2，快速跑通闭环。 |
 | **`make run metric=recall`** | **动态指定选优主指标**：支持 `gini`、`recall`、`rmse`、`spearman`，指导 Gemini 变异并在结束时按该指标遴选冠军。 |
 | **`make run task_id=custom`** | 指定自定义任务编号保存产物。 |

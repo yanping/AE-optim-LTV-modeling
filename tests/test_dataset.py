@@ -73,3 +73,111 @@ def test_split_train_eval_holdout_proportions(dummy_dataset):
     assert len(s_train.intersection(s_eval)) == 0
     assert len(s_train.intersection(s_holdout)) == 0
     assert len(s_eval.intersection(s_holdout)) == 0
+
+
+def test_split_and_save_dataset_cancel_mode(dummy_dataset, tmp_path):
+    from unittest.mock import MagicMock
+    from src.dataset import split_and_save_dataset
+
+    raw_csv = tmp_path / "raw.csv"
+    train_csv = tmp_path / "train.csv"
+    eval_csv = tmp_path / "eval.csv"
+    holdout_csv = tmp_path / "holdout.csv"
+
+    dummy_dataset.to_csv(raw_csv, index=False)
+    train_csv.write_text("old_train")
+    eval_csv.write_text("old_eval")
+    holdout_csv.write_text("old_holdout")
+
+    mock_config = MagicMock()
+    mock_config.raw_wide_path = raw_csv
+    mock_config.train_split_path = train_csv
+    mock_config.eval_split_path = eval_csv
+    mock_config.holdout_split_path = holdout_csv
+
+    success = split_and_save_dataset(config=mock_config, mode="cancel")
+    assert not success
+    assert train_csv.read_text() == "old_train"
+    assert eval_csv.read_text() == "old_eval"
+    assert holdout_csv.read_text() == "old_holdout"
+
+
+def test_split_and_save_dataset_backup_mode(dummy_dataset, tmp_path):
+    from unittest.mock import MagicMock
+    from src.dataset import split_and_save_dataset
+
+    raw_csv = tmp_path / "raw.csv"
+    train_csv = tmp_path / "train.csv"
+    eval_csv = tmp_path / "eval.csv"
+    holdout_csv = tmp_path / "holdout.csv"
+
+    dummy_dataset.to_csv(raw_csv, index=False)
+    train_csv.write_text("old_train")
+    eval_csv.write_text("old_eval")
+    holdout_csv.write_text("old_holdout")
+
+    mock_config = MagicMock()
+    mock_config.raw_wide_path = raw_csv
+    mock_config.train_split_path = train_csv
+    mock_config.eval_split_path = eval_csv
+    mock_config.holdout_split_path = holdout_csv
+    mock_config.train_ratio = 0.6
+    mock_config.eval_ratio = 0.2
+    mock_config.holdout_ratio = 0.2
+    mock_config.random_state = 42
+    mock_config.split_method = "stratified"
+
+    success = split_and_save_dataset(config=mock_config, mode="backup")
+    assert success
+
+    # Verify backup files were created
+    backups = list(tmp_path.glob("*.backup_*.csv"))
+    assert len(backups) == 3
+    backup_contents = [b.read_text() for b in backups]
+    assert "old_train" in backup_contents
+    assert "old_eval" in backup_contents
+    assert "old_holdout" in backup_contents
+
+    # Verify new splits were written to standard paths
+    new_train = pd.read_csv(train_csv)
+    new_eval = pd.read_csv(eval_csv)
+    new_holdout = pd.read_csv(holdout_csv)
+    assert len(new_train) + len(new_eval) + len(new_holdout) == len(dummy_dataset)
+
+
+def test_split_and_save_dataset_overwrite_mode(dummy_dataset, tmp_path):
+    from unittest.mock import MagicMock
+    from src.dataset import split_and_save_dataset
+
+    raw_csv = tmp_path / "raw.csv"
+    train_csv = tmp_path / "train.csv"
+    eval_csv = tmp_path / "eval.csv"
+    holdout_csv = tmp_path / "holdout.csv"
+
+    dummy_dataset.to_csv(raw_csv, index=False)
+    train_csv.write_text("old_train")
+    eval_csv.write_text("old_eval")
+    holdout_csv.write_text("old_holdout")
+
+    mock_config = MagicMock()
+    mock_config.raw_wide_path = raw_csv
+    mock_config.train_split_path = train_csv
+    mock_config.eval_split_path = eval_csv
+    mock_config.holdout_split_path = holdout_csv
+    mock_config.train_ratio = 0.6
+    mock_config.eval_ratio = 0.2
+    mock_config.holdout_ratio = 0.2
+    mock_config.random_state = 42
+    mock_config.split_method = "stratified"
+
+    success = split_and_save_dataset(config=mock_config, mode="overwrite")
+    assert success
+
+    # No backup files created
+    backups = list(tmp_path.glob("*.backup_*.csv"))
+    assert len(backups) == 0
+
+    # Overwritten with new dataframe
+    new_train = pd.read_csv(train_csv)
+    assert len(new_train) > 0
+

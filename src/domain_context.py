@@ -177,7 +177,9 @@ Return ONLY a valid JSON object matching the following structure:
 """
 
     try:
-        credentials, _ = google.auth.default()
+        credentials, _ = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
         auth_req = google.auth.transport.requests.Request()
         credentials.refresh(auth_req)
         token = credentials.token

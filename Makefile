@@ -14,7 +14,7 @@ help:
 	@echo "Available commands:"
 	@echo "  make setup            - Initialize Python virtual environment (venv) and install dependencies"
 	@echo "  make auth             - Authenticate with Google Cloud ADC (gcloud auth application-default login)"
-	@echo "  make split            - Split data/train_wide.csv into 60% Train, 20% Eval, 20% Holdout"
+	@echo "  make split            - Split data/train_wide.csv into 60% Train, 20% Eval, 20% Holdout (options: mode=backup|overwrite|cancel)"
 	@echo "  make run              - Run AlphaEvolve evolution (options: programs=N, metric=gini|recall|rmse|spearman, task_id=ID)"
 	@echo "  make report           - Open HTML report in default browser (options: task_id=ID, default: latest task)"
 	@echo "  make test             - Run automated tests in tests/"
@@ -36,8 +36,8 @@ auth:
 	@gcloud auth application-default login
 
 split:
-	@echo "Splitting dataset into 60% Train, 20% Eval, and 20% Holdout..."
-	@$(PYTHON) -c "from src.evaluate import get_cached_splits; get_cached_splits()"
+	@echo "Partitioning dataset into 60% Train, 20% Eval, and 20% Holdout..."
+	@$(PYTHON) -m src.dataset $(if $(mode),--mode $(mode),)
 
 run:
 	@echo "Launching AlphaEvolve evolution..."

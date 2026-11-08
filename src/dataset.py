@@ -215,3 +215,126 @@ def prepare_features(
     user_ids = df[id_col].values if id_col in df.columns else None
 
     return X, y, user_ids
+
+
+def split_and_save_dataset(
+    config: Optional[Any] = None,
+    mode: Optional[str] = "interactive",
+) -> bool:
+    """
+    Splits the raw wide table into Train (60%), Eval (20%), and Holdout (20%) datasets.
+
+    Handles existing split files safely:
+    - If split files exist and mode == 'interactive': prompts the user interactively (if in a TTY)
+      or defaults to 'backup' in non-interactive environments.
+    - If mode == 'backup': renames existing split files with a timestamp suffix (e.g.
+      train_split.backup_YYYYMMDD_HHMMSS.csv) and saves the newly generated splits under
+      the standard paths specified in config.yaml (preserving config.yaml intact).
+    - If mode == 'overwrite': overwrites existing files directly.
+    - If mode == 'cancel': aborts without modifying any files.
+    """
+    from datetime import datetime
+    import sys
+    from src.config import ProjectConfig
+
+    if config is None:
+        config = ProjectConfig()
+
+    train_path = Path(config.train_split_path)
+    eval_path = Path(config.eval_split_path)
+    holdout_path = Path(config.holdout_split_path)
+
+    existing_files = [p for p in (train_path, eval_path, holdout_path) if p.exists()]
+    action = (mode or "interactive").lower()
+
+    if existing_files:
+        if action == "interactive":
+            if sys.stdin.isatty():
+                print("=" * 70)
+                print("[提示] 检测到 data/ 目录下已存在切分数据集文件：")
+                for p in (train_path, eval_path, holdout_path):
+                    status = f"已存在 ({p.stat().st_size / (1024 * 1024):.1f} MB)" if p.exists() else "不存在"
+                    print(f"  - {p} -> {status}")
+                print("=" * 70)
+                print("请选择操作方式：")
+                print("  [1] 覆盖 (Overwrite): 直接用新切分的数据覆盖已有的分割文件")
+                print("  [2] 备份旧文件并保存新数据 (Backup & Replace - 推荐):")
+                print("      将已有文件重命名备份 (加上时间戳后缀)，新切分数据仍保存为标准文件名")
+                print("      (无需修改 config.yaml)")
+                print("  [3] 取消 (Cancel): 放弃重新切分，保持现有文件不变")
+                print("-" * 70)
+                try:
+                    choice = input("请输入选项 [1/2/3] (默认: 2): ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    print("\n[INFO] 操作已取消。")
+                    return False
+
+                if choice == "1":
+                    action = "overwrite"
+                elif choice in ("2", ""):
+                    action = "backup"
+                elif choice == "3":
+                    action = "cancel"
+                else:
+                    print(f"[WARNING] 未知选项 '{choice}'，已取消操作。")
+                    return False
+            else:
+                print("[INFO] 非交互终端环境，默认使用备份模式 (backup)...")
+                action = "backup"
+
+        if action == "cancel":
+            print("[INFO] 已取消数据切分操作，未修改任何数据文件。")
+            return False
+
+        if action == "backup":
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            print("=" * 70)
+            print(f"[备份] 正在将已有旧切分文件重命名备份 (时间戳: {timestamp}):")
+            for p in (train_path, eval_path, holdout_path):
+                if p.exists():
+                    bak_path = p.parent / f"{p.stem}.backup_{timestamp}{p.suffix}"
+                    p.rename(bak_path)
+                    print(f"  - {p.name} -> {bak_path.name}")
+            print("=" * 70)
+        elif action == "overwrite":
+            print("[提示] 覆盖模式：将直接覆盖现有分割文件...")
+
+    print(f"正在从原始宽表加载数据: {config.raw_wide_path} ...")
+    raw_df = load_data(config.raw_wide_path)
+
+    train_df, eval_df, holdout_df = split_train_eval_holdout(
+        raw_df,
+        train_ratio=config.train_ratio,
+        eval_ratio=config.eval_ratio,
+        holdout_ratio=config.holdout_ratio,
+        random_state=config.random_state,
+        method=config.split_method,
+    )
+
+    save_splits(
+        train_df,
+        holdout_df,
+        train_path,
+        holdout_path,
+        eval_df=eval_df,
+        eval_path=eval_path,
+    )
+    print("\n[SUCCESS] 数据集切分完成！标准切分文件已就绪，可直接执行 make run。")
+    return True
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Split raw train_wide.csv into 60% Train, 20% Eval, and 20% Holdout splits."
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["interactive", "overwrite", "backup", "cancel"],
+        default="interactive",
+        help="Action when existing split files are detected: interactive (default), overwrite, backup, cancel",
+    )
+    cli_args = parser.parse_args()
+    split_and_save_dataset(mode=cli_args.mode)
+
