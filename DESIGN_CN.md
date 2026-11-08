@@ -263,7 +263,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 系统全面打通 Google Cloud Discovery Engine API 底层遥测数据，并在报告中以看板形式直观展示：
 1. **端到端执行耗时**：记录演化启动时间、结束时间与总执行秒数。
-2. **大模型采样总次数与分模型统计**：汇总总调用次数，并依据混合权重（`gemini-3.5-flash`: 70%，`gemini-3.1-pro-preview`: 30%）精确分解展示各模型的实际调用量与占比。
+2. **大模型采样总次数与分模型统计**：汇总总调用次数，并依据混合权重（`gemini-4-argon`: 70%，`gemini-3.8-flash`: 30%）精确分解展示各模型的实际调用量与占比。
 3. **GCP Billed Token 资源消耗**：直接从 Google Cloud API 实验 `stats` 对象中提取真实的 `inputTokenCount` 与 `outputTokenCount`。
 4. **本地并发吞吐**：记录本地多线程并行拟合的候选代际数量与评估成功率。
 
@@ -334,9 +334,9 @@ evolution:
 
 # 3. Gemini 大模型生成权重混合配比
 models:
-  - name: "gemini-3.5-flash"
+  - name: "gemini-4-argon"
     weight: 0.70
-  - name: "gemini-3.1-pro-preview"
+  - name: "gemini-3.8-flash"
     weight: 0.30
 
 # 4. 数据集切分配置 (全量 train_wide.csv 切分)

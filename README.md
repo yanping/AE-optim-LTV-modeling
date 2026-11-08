@@ -148,9 +148,9 @@ evolution:
 
 # 3. Foundation Model Mixture Weights
 models:
-  - name: "gemini-3.5-flash"
+  - name: "gemini-4-argon"
     weight: 0.70
-  - name: "gemini-3.1-pro-preview"
+  - name: "gemini-3.8-flash"
     weight: 0.30
 
 # 4. Dataset 3-Way Balanced Partitioning
@@ -209,7 +209,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 ### 5.3 Interactive HTML Report Dashboard Features
 The generated `artifacts/<task_id>/evolution_report.html` provides in-depth telemetry:
-- **⚡ Compute & Resource Telemetry**: Displays total execution time, LLM invocation counts split by model (`gemini-3.5-flash` vs `gemini-3.1-pro-preview`), and verified Google Cloud API `inputTokenCount` and `outputTokenCount`.
+- **⚡ Compute & Resource Telemetry**: Displays total execution time, LLM invocation counts split by model (`gemini-4-argon` vs `gemini-3.8-flash`), and verified Google Cloud API `inputTokenCount` and `outputTokenCount`.
 - **👑 Champion Metric Prominence & Optimization Direction**:
   - Highlights the chosen optimization metric with an amber halo and ranking comparison.
   - The "Holdout Split Metric Comparison" table features a dedicated **Optimization Direction** column explicitly denoting whether each metric is `↑ Higher is better` or `↓ Lower is better`.

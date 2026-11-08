@@ -148,9 +148,9 @@ evolution:
 
 # 3. 大模型混合配比
 models:
-  - name: "gemini-3.5-flash"
+  - name: "gemini-4-argon"
     weight: 0.70
-  - name: "gemini-3.1-pro-preview"
+  - name: "gemini-3.8-flash"
     weight: 0.30
 
 # 4. 数据集三向切分
@@ -209,7 +209,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 ### 5.3 交互式 HTML 报告核心看板
 任务执行产出的 `artifacts/<task_id>/evolution_report.html` 具备以下深度特性：
-- **⚡ 资源与算力执行看板**：展示任务总执行耗时、大模型调用总次数及按模型拆分次数（`gemini-3.5-flash` vs `gemini-3.1-pro-preview`）、Google Cloud API 真实 `inputTokenCount` 与 `outputTokenCount` 资源统计。
+- **⚡ 资源与算力执行看板**：展示任务总执行耗时、大模型调用总次数及按模型拆分次数（`gemini-4-argon` vs `gemini-3.8-flash`）、Google Cloud API 真实 `inputTokenCount` 与 `outputTokenCount` 资源统计。
 - **👑 冠军选优主指标高亮与优劣倾向标定**：
   - 对选优主指标赋予专属光环标记与排名对比。
   - 在「20% 留出集全量指标对比」表格中新增专门的「**优劣倾向 (优化方向)**」列，明确标定指标是 `↑ 越大越好` 还是 `↓ 越小越好`，顶部指标卡片同步提示优化方向，业务含义一目了然。

@@ -263,7 +263,7 @@ System prompts inject structured F2P gaming domain knowledge prior to invoking G
 
 The reporting engine surfaces low-level execution telemetry directly from the Google Cloud Discovery Engine API:
 1. **Execution Duration**: Tracks start time, end time, and total elapsed runtime (formatted as mm:ss).
-2. **Model Call Breakdown**: Tallies total LLM invocations and splits counts by model (`gemini-3.5-flash`: 70% vs. `gemini-3.1-pro-preview`: 30%).
+2. **Model Call Breakdown**: Tallies total LLM invocations and splits counts by model (`gemini-4-argon`: 70% vs. `gemini-3.8-flash`: 30%).
 3. **Verified GCP Token Usage**: Extracts authentic `inputTokenCount` and `outputTokenCount` directly from cloud experiment `stats`.
 4. **Local Throughput**: Measures local parallel worker throughput and candidate evaluation success rates.
 
@@ -341,9 +341,9 @@ evolution:
 
 # 3. Gemini Foundation Model Mixture Weights
 models:
-  - name: "gemini-3.5-flash"
+  - name: "gemini-4-argon"
     weight: 0.70
-  - name: "gemini-3.1-pro-preview"
+  - name: "gemini-3.8-flash"
     weight: 0.30
 
 # 4. Dataset Partitioning (Full train_wide.csv Split)
